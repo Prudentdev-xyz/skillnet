@@ -1,0 +1,1004 @@
+================================================================
+SKILLAR — SYSTEM ARCHITECTURE & USER FLOW DIAGRAMS
+Skills for developers. Tools for agents. Payments on Stellar.
+Plain Text / ASCII Structure
+================================================================
+
+
+================================================================
+DIAGRAM 1 — SYSTEM ARCHITECTURE
+How all the layers connect to each other
+================================================================
+
+┌─────────────────────────────────────────────────────────────┐
+│                   USER / BROWSER / AI AGENT                 │
+└──────────┬──────────────────┬──────────────────┬────────────┘
+           │                  │                  │
+     opens website      connects wallet    calls API directly
+     (human buyer)      (Freighter)        (AI agent)
+           │                  │                  │
+           ▼                  ▼                  ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   LAYER 1 — FRONTEND                        │
+│              (React + Vite + Tailwind + shadcn/ui)          │
+│                                                             │
+│  ┌─────────────────────┐    ┌──────────────────────────┐   │
+│  │   Home / Landing    │    │   Catalog Page           │   │
+│  │  - Hero section     │    │  - Browse all skills     │   │
+│  │  - How it works     │    │  - Filter by category    │   │
+│  │  - Categories       │    │  - Search bar            │   │
+│  │  - Stats bar        │    │  - Skill cards           │   │
+│  │  - Connect wallet   │    │  - View Details button   │   │
+│  └─────────────────────┘    │  - Buy Now button        │   │
+│                             └──────────────────────────┘   │
+│  ┌─────────────────────┐    ┌──────────────────────────┐   │
+│  │  Skill Detail Page  │    │   Seller Pages           │   │
+│  │  - Full description │    │  - List a Skill form     │   │
+│  │  - Price in USDC    │    │  - Seller dashboard      │   │
+│  │  - Seller info      │    │  - Earnings tracker      │   │
+│  │  - Download button  │    │  - Download counts       │   │
+│  │  - Related skills   │    │  - Listed skills mgmt    │   │
+│  └─────────────────────┘    └──────────────────────────┘   │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+           HTTP requests to API + reads from Supabase
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│               LAYER 2 — API LAYER                           │
+│         (Vercel Serverless Functions /api folder)           │
+│                                                             │
+│  GET  /api/skills          ──► returns all skills JSON      │
+│  GET  /api/skills/:id      ──► returns one skill JSON       │
+│  GET  /api/categories      ──► returns all categories       │
+│  POST /api/download/:id    ──► x402 payment gate            │
+│  POST /api/list-skill      ──► saves new skill listing      │
+│  GET  /api/dashboard/:addr ──► returns seller earnings      │
+│                                                             │
+│  The /api/download/:id endpoint is the most critical:       │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  1. Receives download request                       │   │
+│  │  2. Fires HTTP 402 — Payment Required               │   │
+│  │  3. Returns price + seller Stellar address          │   │
+│  │  4. Waits for Stellar payment confirmation          │   │
+│  │  5. Verifies transaction on Stellar testnet         │   │
+│  │  6. Releases signed Supabase Storage URL            │   │
+│  │  7. File downloads to client (human or agent)       │   │
+│  └─────────────────────────────────────────────────────┘   │
+└────────────┬────────────────────────┬───────────────────────┘
+             │                        │
+     reads/writes data         verifies payments
+             │                        │
+             ▼                        ▼
+┌──────────────────────┐   ┌─────────────────────────────────┐
+│  LAYER 3 — DATABASE  │   │    LAYER 4 — BLOCKCHAIN         │
+│     (Supabase)       │   │    (Stellar Testnet + x402)     │
+│                      │   │                                 │
+│  skills table        │   │  x402 Protocol                  │
+│  - id                │   │  - HTTP 402 payment standard    │
+│  - name              │   │  - Fires on download request    │
+│  - description       │   │  - Returns price + address      │
+│  - category          │   │                                 │
+│  - price_usdc        │   │  Stellar Testnet                │
+│  - seller_address    │   │  - Settles in ~5 seconds        │
+│  - file_url          │   │  - USDC stablecoin payment      │
+│  - downloads         │   │  - Near zero fees               │
+│  - rating            │   │  - Transaction ID on-chain      │
+│  - created_at        │   │                                 │
+│                      │   │  Freighter Wallet               │
+│  sellers table       │   │  - Browser extension            │
+│  - stellar_address   │   │  - Human buyer confirms popup   │
+│  - total_earnings    │   │  - Shows amount + recipient     │
+│  - total_downloads   │   │                                 │
+│                      │   │  Smart Wallet (for agents)      │
+│  Supabase Storage    │   │  - Auto-pays within budget      │
+│  - skill zip files   │   │  - No human confirmation        │
+│  - signed URLs       │   │  - Spending limits enforced     │
+│  - secure access     │   │                                 │
+└──────────────────────┘   └─────────────────────────────────┘
+
+
+================================================================
+HOW THE LAYERS TALK TO EACH OTHER (Connection Summary)
+================================================================
+
+  Frontend (React)
+      │
+      │── HTTP GET ────────────────► Supabase (read skills data)
+      │── HTTP POST ──────────────► Vercel API (download request)
+      │── Freighter API ──────────► Stellar (wallet connect)
+      │── Freighter popup ────────► Human buyer confirms payment
+      │
+  Vercel Serverless Functions
+      │
+      │── reads/writes ───────────► Supabase PostgreSQL
+      │── fires HTTP 402 ─────────► x402 Protocol
+      │── verifies transaction ───► Stellar testnet RPC
+      │── generates signed URL ───► Supabase Storage
+      │── saves new listing ──────► Supabase skills table
+      │
+  AI Agent (OpenClaw / Node.js script)
+      │
+      │── GET /api/skills ────────► Vercel API (discover skills)
+      │── POST /api/download/:id ─► Vercel API (trigger x402)
+      │── x402 auto-payment ──────► Stellar testnet (USDC)
+      │── receives JSON ──────────► Uses skill immediately
+
+
+================================================================
+DIAGRAM 2 — HUMAN BUYER USER FLOW
+How a human developer buys a skill on Skillar
+================================================================
+
+  ┌──────────────────────────────────────────────────────┐
+  │                   HUMAN BUYER                        │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  1. Lands on Skillar home page                       │
+  │     Reads hero section, understands the product      │
+  │     Clicks "Browse Skills" button                    │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  2. Connects Freighter wallet                        │
+  │     Clicks "Connect Wallet" in top right             │
+  │     Freighter browser extension popup opens          │
+  │     User approves the connection                     │
+  │     Their Stellar address now shows in the header    │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  3. Browses the catalog                              │
+  │     Sees skill cards with name, category, price      │
+  │     Filters by category (AI, Crypto, Backend etc.)   │
+  │     Uses search bar to find specific skills          │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+              ┌──────────────┴──────────────┐
+              │                             │
+     clicks View Details            clicks Buy Now
+              │                             │
+              ▼                             ▼
+  ┌──────────────────────┐     ┌────────────────────────┐
+  │  Skill Detail Page   │     │  x402 fires directly   │
+  │  Reads full desc     │     │  from catalog card     │
+  │  Sees file contents  │     │  No page change needed │
+  │  Clicks Download     │     └────────────┬───────────┘
+  └──────────┬───────────┘                  │
+             │                              │
+             └──────────────┬───────────────┘
+                            │
+                            ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  4. Server fires HTTP 402                            │
+  │     Vercel serverless function receives request      │
+  │     Returns: price + seller Stellar address          │
+  │     Example: "Pay 1.50 USDC to G...xyz"             │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  5. Freighter wallet popup appears on screen         │
+  │                                                      │
+  │     ┌────────────────────────────────────┐           │
+  │     │  Freighter                         │           │
+  │     │  ─────────────────────────────     │           │
+  │     │  Sending: 1.50 USDC                │           │
+  │     │  To: G...xyz (seller wallet)       │           │
+  │     │  Network: Stellar Testnet          │           │
+  │     │                                    │           │
+  │     │  [Approve]          [Reject]        │           │
+  │     └────────────────────────────────────┘           │
+  │                                                      │
+  │  Human reads the details and clicks Approve          │
+  │  Their money does not move until this click          │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  6. Payment settles on Stellar testnet               │
+  │     Transaction confirmed in approximately 5 seconds │
+  │     Transaction ID generated on-chain                │
+  │     USDC lands in seller Stellar wallet instantly    │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  7. Vercel function verifies the transaction         │
+  │     Checks Stellar testnet for payment confirmation  │
+  │     Matches transaction amount and address           │
+  │     Generates signed download URL from Supabase      │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  8. Skill zip file downloads to buyer computer       │
+  │     Browser automatically starts download            │
+  │     File contains:                                   │
+  │       - skill.json  (manifest and metadata)          │
+  │       - index.js    (the skill logic and code)       │
+  │       - README.md   (how to install and use it)      │
+  │       - example.js  (usage example for the agent)    │
+  └──────────────────────────────────────────────────────┘
+
+  Total experience time: approximately 15 seconds
+  including wallet popup and Stellar confirmation
+
+
+================================================================
+DIAGRAM 3 — SELLER USER FLOW
+How a developer lists a skill and earns on Skillar
+================================================================
+
+  ┌──────────────────────────────────────────────────────┐
+  │                    DEVELOPER / SELLER                │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  1. Lands on Skillar and connects Freighter wallet   │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  2. Clicks "List Your Skill" button                  │
+  │     Goes to /list-skill page                         │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  3. Fills the listing form                           │
+  │                                                      │
+  │     Skill name:        [ Web Scraper Pro           ] │
+  │     Category:          [ Backend              ▼   ] │
+  │     Description:       [ Scrapes any website...   ] │
+  │     Price (USDC):      [ 2.00                      ] │
+  │     Upload skill file: [ Choose .zip file          ] │
+  │     Stellar address:   [ G...your_address          ] │
+  │                                                      │
+  │     [ Submit Listing ]                               │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  4. Vercel API saves listing to Supabase             │
+  │     Zip file uploads to Supabase Storage             │
+  │     Skill appears in catalog immediately             │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  5. Redirected to seller dashboard /dashboard        │
+  │     Sees their listed skills                         │
+  │     Sees download count (starts at 0)                │
+  │     Sees total earnings (starts at $0.00 USDC)       │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  6. Every time someone buys their skill              │
+  │     USDC lands directly in their Stellar wallet      │
+  │     No invoice. No waiting. No platform cut.         │
+  │     Dashboard updates with new download count        │
+  │     and new earnings total                           │
+  └──────────────────────────────────────────────────────┘
+
+  Seller earns passively. Set it up once, earn forever.
+
+
+================================================================
+DIAGRAM 4 — AI AGENT (AUTONOMOUS) FLOW
+How an OpenClaw agent buys a skill with zero human involvement
+================================================================
+
+  ┌──────────────────────────────────────────────────────┐
+  │              OPENCLAW AI AGENT                       │
+  │         (running in terminal on user machine)        │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  1. User sends task via Telegram or WhatsApp         │
+  │     "Research top 3 crypto coins and send me a       │
+  │      price summary"                                  │
+  │                                                      │
+  │  Agent starts working on the task automatically      │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  2. Agent realizes it needs a crypto price skill     │
+  │     No skill available locally                       │
+  │     Agent queries Skillar API automatically          │
+  │                                                      │
+  │     GET https://skillar.vercel.app/api/skills        │
+  │         ?category=crypto                             │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  3. Skillar returns skill catalog as JSON            │
+  │                                                      │
+  │     [                                                │
+  │       {                                              │
+  │         "id": "crypto-price-watcher",                │
+  │         "name": "Crypto Price Watcher",              │
+  │         "price": 0.001,                              │
+  │         "rating": 4.9,                               │
+  │         "category": "crypto"                         │
+  │       },                                             │
+  │       ...                                            │
+  │     ]                                                │
+  │                                                      │
+  │  Agent picks highest rated skill automatically       │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  4. Agent calls download endpoint                    │
+  │                                                      │
+  │     POST /api/download/crypto-price-watcher          │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  5. Skillar server fires HTTP 402                    │
+  │     Returns: price 0.001 USDC + seller address       │
+  │     No human sees this. It is machine to machine.    │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  6. Agent smart wallet pays automatically            │
+  │     0.001 USDC sent to seller Stellar address        │
+  │     NO popup. NO human approval. NO waiting.         │
+  │     Agent operates within pre-set spending limits    │
+  │     Stellar confirms transaction in ~5 seconds       │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  7. Skillar verifies payment on Stellar testnet      │
+  │     Returns skill data as JSON directly to agent     │
+  │                                                      │
+  │     {                                                │
+  │       "skill_id": "crypto-price-watcher",            │
+  │       "endpoint": "https://...",                     │
+  │       "method": "GET",                               │
+  │       "parameters": { "coin": "string" },            │
+  │       "returns": { "price": "number" }               │
+  │     }                                                │
+  │                                                      │
+  │  No zip file. Pure JSON. Agent reads and uses it.    │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  8. Agent uses the skill to complete the task        │
+  │     Fetches live crypto prices using new skill       │
+  │     BTC: $84,231 (+3.2%)                             │
+  │     ETH: $3,891 (+1.8%)                              │
+  │     SOL: $142 (+5.1%)                                │
+  └──────────────────────────┬───────────────────────────┘
+                             │
+                             ▼
+  ┌──────────────────────────────────────────────────────┐
+  │  9. Agent sends completed report to user on Telegram │
+  │                                                      │
+  │     Research complete!                               │
+  │     ─────────────────────────────────────            │
+  │     BTC: $84,231 (+3.2% 24h)                         │
+  │     ETH: $3,891 (+1.8% 24h)                          │
+  │     SOL: $142 (+5.1% 24h)                            │
+  │                                                      │
+  │     Skill acquired from Skillar                      │
+  │     Paid: 0.001 USDC on Stellar testnet              │
+  │     Tx: abc123xyz                                    │
+  │     ─────────────────────────────────────            │
+  │                                                      │
+  │  Human never touched the computer after sending      │
+  │  the initial Telegram message. Pure autonomy.        │
+  └──────────────────────────────────────────────────────┘
+
+  Total time from task to completion: under 30 seconds
+  Human involvement: zero after sending first message
+
+
+================================================================
+DIAGRAM 5 — THE PAYMENT FLOW
+How money moves through Skillar
+================================================================
+
+  BUYER has USDC in Freighter or Smart Wallet
+         │
+         ▼
+  ┌─────────────────────┐
+  │   x402 Protocol     │  ← HTTP 402 Payment Required
+  │   Vercel Function   │    triggers on download request
+  └──────────┬──────────┘
+             │
+             │ Payment instruction sent to buyer wallet
+             │ Amount + seller Stellar address
+             ▼
+  ┌─────────────────────┐
+  │  Stellar Testnet    │  ← USDC transfer settles here
+  │  Settlement Layer   │    in approximately 5 seconds
+  └──────────┬──────────┘
+             │
+             │ Funds go directly to seller
+             │ Platform takes zero cut
+             ▼
+  ┌─────────────────────────────────────────────┐
+  │                                             │
+  │  100% ──────────────────► Seller wallet     │
+  │                           (their Stellar    │
+  │                            address)         │
+  │                                             │
+  │  $0 ────────────────────► Skillar platform  │
+  │                           (no middleman     │
+  │                            no platform fee) │
+  │                                             │
+  └─────────────────────────────────────────────┘
+
+  Note: For hackathon demo, Skillar takes no platform cut.
+  In production, a small percentage could be added
+  via the x402 middleware configuration.
+
+  Human buyer flow:
+  Freighter popup → human approves → Stellar settles → file released
+
+  Agent buyer flow:
+  Smart wallet auto-pays → Stellar settles → JSON returned
+
+
+================================================================
+DIAGRAM 6 — THE TWO ENTRANCES
+Human UI vs Agent API — same platform, different doors
+================================================================
+
+  SKILLAR PLATFORM
+  ─────────────────────────────────────────────────────────
+
+  ENTRANCE 1 — Human Door (Frontend)
+  ─────────────────────────────────────────────────────────
+
+  skillar.vercel.app/              Home page
+  skillar.vercel.app/catalog       Browse skills
+  skillar.vercel.app/skills/:id    Skill detail + download
+  skillar.vercel.app/list-skill    Seller listing form
+  skillar.vercel.app/dashboard     Seller earnings page
+
+  Who uses this: Human developers and sellers
+  Interface: React pages, buttons, Freighter popup
+  Response type: Visual HTML pages
+
+  ─────────────────────────────────────────────────────────
+
+  ENTRANCE 2 — Agent Door (Backend API)
+  ─────────────────────────────────────────────────────────
+
+  skillar.vercel.app/api/skills           All skills JSON
+  skillar.vercel.app/api/skills/:id       One skill JSON
+  skillar.vercel.app/api/categories       Categories JSON
+  skillar.vercel.app/api/download/:id     x402 payment gate
+  skillar.vercel.app/api/list-skill       POST new listing
+  skillar.vercel.app/api/dashboard/:addr  Seller stats JSON
+
+  Who uses this: AI agents (OpenClaw, custom scripts)
+  Interface: Pure JSON API, no visual UI
+  Response type: Structured JSON data
+
+  ─────────────────────────────────────────────────────────
+
+  Both entrances hit the same Supabase database.
+  Both payments go through the same x402 endpoint.
+  Both settle on the same Stellar testnet.
+  Different doors. Same building.
+
+
+================================================================
+DIAGRAM 7 — SKILL FILE STRUCTURE
+What a buyer receives after payment
+================================================================
+
+  Human buyer receives a .zip file containing:
+  ─────────────────────────────────────────────
+
+  crypto-price-watcher/
+  │
+  ├── skill.json
+  │     {
+  │       "name": "Crypto Price Watcher",
+  │       "version": "1.0.0",
+  │       "description": "Fetches live crypto prices",
+  │       "author": "G...seller_address",
+  │       "category": "crypto",
+  │       "price": 0.001
+  │     }
+  │
+  ├── index.js
+  │     The actual skill logic and code.
+  │     A JavaScript function that fetches
+  │     live crypto prices from an API.
+  │     This is what the agent calls.
+  │
+  ├── README.md
+  │     Plain English explanation of the skill.
+  │     How to install it, how to use it,
+  │     what parameters it accepts,
+  │     what it returns.
+  │
+  └── example.js
+        Shows exactly how to plug the skill
+        into an OpenClaw agent or any other
+        agent framework. Ready to copy and run.
+
+  ─────────────────────────────────────────────
+
+  AI Agent receives JSON directly (no zip):
+  ─────────────────────────────────────────────
+
+  {
+    "skill_id": "crypto-price-watcher",
+    "endpoint": "https://skillar.vercel.app/...",
+    "method": "GET",
+    "auth": "x402",
+    "parameters": {
+      "coin": "string (e.g. BTC, ETH, SOL)"
+    },
+    "returns": {
+      "price": "number",
+      "change_24h": "number",
+      "timestamp": "string"
+    },
+    "cost_per_call": "0.001 USDC"
+  }
+
+  Agent reads this JSON, understands the endpoint,
+  and immediately starts calling the skill API.
+  No zip. No README. Machine readable only.
+
+
+================================================================
+DIAGRAM 8 — SKILL CATEGORIES
+The 8 categories available on Skillar
+================================================================
+
+  ┌─────────────────────────────────────────────────────┐
+  │                SKILLAR CATEGORIES                   │
+  │                                                     │
+  │  ┌───────────┐  ┌───────────┐  ┌────────────────┐  │
+  │  │ Blockchain│  │  Crypto   │  │      AI        │  │
+  │  │           │  │           │  │                │  │
+  │  │ On-chain  │  │ Price     │  │ Inference      │  │
+  │  │ tools,    │  │ feeds,    │  │ tools,         │  │
+  │  │ contract  │  │ trading   │  │ model          │  │
+  │  │ readers,  │  │ signals,  │  │ wrappers,      │  │
+  │  │ tx tools  │  │ wallets   │  │ prompts        │  │
+  │  └───────────┘  └───────────┘  └────────────────┘  │
+  │                                                     │
+  │  ┌───────────┐  ┌───────────┐  ┌────────────────┐  │
+  │  │   Web3    │  │ Frontend  │  │    Backend     │  │
+  │  │           │  │           │  │                │  │
+  │  │ DApp      │  │ UI        │  │ APIs,          │  │
+  │  │ tools,    │  │ components│  │ scrapers,      │  │
+  │  │ NFT,      │  │ design    │  │ data           │  │
+  │  │ DeFi      │  │ systems   │  │ pipelines      │  │
+  │  └───────────┘  └───────────┘  └────────────────┘  │
+  │                                                     │
+  │     ┌─────────────────┐  ┌─────────────────────┐   │
+  │     │ Product Design  │  │   Stellar / DeFi    │   │
+  │     │                 │  │                     │   │
+  │     │ UX tools,       │  │ Stellar wallet,     │   │
+  │     │ research,       │  │ token tools,        │   │
+  │     │ wireframe       │  │ Soroban skills      │   │
+  │     │ generators      │  │ on-chain queries    │   │
+  │     └─────────────────┘  └─────────────────────┘   │
+  └─────────────────────────────────────────────────────┘
+
+
+================================================================
+DIAGRAM 9 — FRONTEND PAGES
+All 5 pages and what lives on each one
+================================================================
+
+  PAGES (build in this order):
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  /                    Home / Landing Page               │
+  │                                                         │
+  │  - Hero section with Skillar name and tagline           │
+  │  - "Browse Skills" and "List Your Skill" CTA buttons    │
+  │  - How it works — 4 step explanation                    │
+  │  - Categories section — 8 clickable category cards      │
+  │  - Stats bar — total skills, sellers, downloads         │
+  │  - Connect Wallet button top right (Freighter)          │
+  └─────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  /catalog             Catalog / Browse Page             │
+  │                                                         │
+  │  - Search bar at top                                    │
+  │  - Category filter tabs (all 8 categories)              │
+  │  - Grid of skill cards                                  │
+  │  - Each card contains:                                  │
+  │      - Category badge                                   │
+  │      - Skill name (bold)                                │
+  │      - Short description                                │
+  │      - Star rating + download count                     │
+  │      - Price in USDC                                    │
+  │      - [View Details] button                            │
+  │      - [Buy Now] button (triggers x402 directly)        │
+  └─────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  /skills/:id          Skill Detail Page                 │
+  │                                                         │
+  │  - Skill name and category badge                        │
+  │  - Full description                                     │
+  │  - Price in USDC (large and prominent)                  │
+  │  - Seller Stellar address (shortened)                   │
+  │  - Star rating and total downloads                      │
+  │  - What the skill does — inputs and outputs             │
+  │  - File structure preview (skill.json, index.js etc.)   │
+  │  - [Download Skill] button — payment fires here         │
+  │  - Related skills section at bottom                     │
+  └─────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  /list-skill          Seller Listing Form Page          │
+  │                                                         │
+  │  - Page heading: "List Your Skill on Skillar"           │
+  │  - Form fields:                                         │
+  │      - Skill name (text input)                          │
+  │      - Category (dropdown — all 8 categories)           │
+  │      - Short description (text area)                    │
+  │      - Full description (text area)                     │
+  │      - Price in USDC (number input)                     │
+  │      - Upload skill zip file (file upload)              │
+  │      - Your Stellar wallet address (text input)         │
+  │  - [Submit Listing] button                              │
+  │  - Redirects to dashboard after submission              │
+  └─────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  /dashboard           Seller Dashboard Page             │
+  │                                                         │
+  │  - Connected wallet address shown at top                │
+  │  - Summary stats cards:                                 │
+  │      - Total earnings (USDC)                            │
+  │      - Total downloads                                  │
+  │      - Total skills listed                              │
+  │  - Table of listed skills with:                         │
+  │      - Skill name                                       │
+  │      - Category                                         │
+  │      - Price                                            │
+  │      - Downloads count                                  │
+  │      - Earnings from that skill                         │
+  │      - Date listed                                      │
+  └─────────────────────────────────────────────────────────┘
+
+
+================================================================
+DIAGRAM 10 — TECH STACK
+Every tool used in Skillar and what it does
+================================================================
+
+  FRONTEND
+  ┌──────────────────────────────────────────────────────┐
+  │  React + Vite          App framework and build tool  │
+  │  React Router          Page navigation (/catalog etc)│
+  │  Tailwind CSS          All styling and layout        │
+  │  shadcn/ui             Pre-built UI components       │
+  │  Framer Motion         Page and card animations      │
+  │  @stellar/freighter-api Wallet connect to Freighter  │
+  │  @stellar/stellar-sdk  Verify Stellar transactions   │
+  └──────────────────────────────────────────────────────┘
+
+  BACKEND (Serverless — no separate server)
+  ┌──────────────────────────────────────────────────────┐
+  │  Vercel Serverless     API routes in /api folder     │
+  │  Functions             Auto-deployed with frontend   │
+  │  x402 middleware       HTTP 402 payment standard     │
+  │  Node.js               Runtime for all functions     │
+  └──────────────────────────────────────────────────────┘
+
+  DATABASE & STORAGE
+  ┌──────────────────────────────────────────────────────┐
+  │  Supabase PostgreSQL   Skills table, sellers table   │
+  │  Supabase Storage      Skill zip files storage       │
+  │  Supabase Auth         Optional seller authentication│
+  └──────────────────────────────────────────────────────┘
+
+  BLOCKCHAIN & PAYMENTS
+  ┌──────────────────────────────────────────────────────┐
+  │  Stellar Testnet       The settlement blockchain     │
+  │  USDC stablecoin       The payment currency          │
+  │  x402 Protocol         The payment standard (HTTP)   │
+  │  Freighter wallet      Human buyer wallet (browser)  │
+  │  Smart wallet          Agent buyer wallet (auto-pay) │
+  └──────────────────────────────────────────────────────┘
+
+  AUTONOMOUS AGENT (for demo)
+  ┌──────────────────────────────────────────────────────┐
+  │  OpenClaw              Agent framework (global npm)  │
+  │  Telegram / WhatsApp   Agent communication channel   │
+  │  Node.js script        Custom agent demo script      │
+  └──────────────────────────────────────────────────────┘
+
+  DEPLOYMENT
+  ┌──────────────────────────────────────────────────────┐
+  │  Vercel                Frontend + serverless API     │
+  │  GitHub                Source code + open source repo│
+  └──────────────────────────────────────────────────────┘
+
+
+================================================================
+DIAGRAM 11 — BUILD ORDER
+The exact sequence to build Skillar phase by phase
+================================================================
+
+  PHASE 1 — Project Setup
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Create React + Vite project                        │
+  │  Install Tailwind CSS                               │
+  │  Install shadcn/ui                                  │
+  │  Set up folder structure                            │
+  │  Push to GitHub immediately                         │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 2 — Supabase Setup
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Create Supabase project                            │
+  │  Create skills table                                │
+  │  Create sellers table                               │
+  │  Seed mock skill data (all 8 categories)            │
+  │  Set up Supabase Storage buckets                    │
+  │  Upload mock skill zip files                        │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 3 — Home Page
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Build landing page — judges see this first         │
+  │  Hero, how it works, categories, stats              │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 4 — Catalog Page
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Build catalog with real Supabase data              │
+  │  Skill cards with two buttons each                  │
+  │  Category filter and search                         │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 5 — Skill Detail Page
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Dynamic route /skills/:id                          │
+  │  Full skill info, download button                   │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 6 — Supabase Storage Wiring
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Connect zip files to skill listings                │
+  │  Signed URL generation ready for download           │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 7 — Freighter Wallet Connection
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Connect Wallet button                              │
+  │  Freighter API integration                          │
+  │  Display wallet address in header                   │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 8 — Vercel Serverless API Routes
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Create /api folder                                 │
+  │  Build all agent API endpoints                      │
+  │  Test each endpoint returns correct JSON            │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 9 — x402 Payment Endpoint
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Build /api/download/:id serverless function        │
+  │  Wire x402 middleware                               │
+  │  Connect to Stellar testnet                         │
+  │  Test HTTP 402 fires correctly                      │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 10 — Human Download Flow (end to end)
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Connect Download button to x402 endpoint           │
+  │  Freighter popup on payment request                 │
+  │  Zip releases after Stellar confirms                │
+  │  Test complete buyer journey end to end             │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 11 — Seller Form Page
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Build /list-skill page                             │
+  │  Form saves to Supabase                             │
+  │  File uploads to Supabase Storage                   │
+  │  Redirects to dashboard after submit                │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 12 — Seller Dashboard Page
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Build /dashboard page                              │
+  │  Earnings stats cards                               │
+  │  Listed skills table                                │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 13 — OpenClaw Agent Script
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Install OpenClaw globally                          │
+  │  Connect to Telegram                                │
+  │  Write agent script that calls Skillar API          │
+  │  Test autonomous payment flow in terminal           │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 14 — Animation Polish
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Framer Motion on all pages                         │
+  │  Card hover effects                                 │
+  │  Payment success animation                          │
+  │  Loading states                                     │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 15 — README + Documentation
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Write full README on GitHub                        │
+  │  Document all features                              │
+  │  Document all mock data used                        │
+  │  Include setup instructions                         │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+                        ▼
+  PHASE 16 — Deploy + Demo Video
+    │
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Deploy to Vercel                                   │
+  │  Test live URL                                      │
+  │  Record 2-3 minute demo video                       │
+  │  Submit to hackathon before April 13                │
+  └─────────────────────────────────────────────────────┘
+
+
+================================================================
+DIAGRAM 12 — DEMO VIDEO STRUCTURE
+How to record the winning 2-3 minute video
+================================================================
+
+  0:00 to 0:20 — Introduction
+    Open Skillar home page in browser
+    Say: "Skillar is the skill marketplace for developers
+          and AI agents, with instant payments on Stellar
+          via x402."
+
+  0:20 to 0:50 — Human buyer flow
+    Browse catalog
+    Click Buy Now on a skill card
+    Freighter popup appears
+    Confirm payment
+    Show zip file downloading
+
+  0:50 to 1:10 — Seller flow
+    Go to List a Skill page
+    Fill the form
+    Submit
+    Show skill appearing in catalog immediately
+
+  1:10 to 1:40 — Autonomous agent demo
+    Switch to terminal
+    Run OpenClaw agent script
+    Show terminal printing:
+      - Querying Skillar API...
+      - Found skill: Crypto Price Watcher
+      - Initiating payment on Stellar...
+      - Payment confirmed — Tx: abc123
+      - Skill received. Fetching prices...
+      - BTC: $84,231 (+3.2%)
+    Show Telegram notification arriving on phone
+
+  1:40 to 2:00 — Stellar transaction proof
+    Open Stellar testnet explorer
+    Paste transaction ID
+    Show real on-chain transaction to judges
+    This is the most important moment
+
+  2:00 to 2:20 — Seller dashboard
+    Show earnings updated in dashboard
+    Developer got paid automatically
+
+  2:20 to 2:30 — Close
+    Back to home page
+    Say: "Skillar — Skills for developers.
+          Tools for agents. Payments on Stellar."
+
+
+================================================================
+SUBMISSION CHECKLIST
+================================================================
+
+  GitHub Repository
+  ─────────────────
+  □ Public GitHub repo created
+  □ All source code committed and visible
+  □ README.md written with full detail
+  □ Mock data usage documented in README
+  □ Setup and run instructions included
+  □ Tech stack listed
+  □ Live Vercel URL in README
+
+  Demo Video (2-3 minutes)
+  ────────────────────────
+  □ Home page shown
+  □ Human buyer flow demonstrated
+  □ Seller listing form demonstrated
+  □ Autonomous agent demo shown in terminal
+  □ Stellar testnet transaction shown on explorer
+  □ Seller dashboard earnings shown
+  □ Product name and tagline said clearly
+
+  Stellar Testnet Interaction
+  ───────────────────────────
+  □ x402 payment fires on every download
+  □ Real USDC transaction on Stellar testnet
+  □ Transaction ID visible and verifiable
+  □ Both human and agent flows trigger real txns
+
+  Deadline: April 13, 2026
+  Prize: $5,000 XLM for first place
+
+
+================================================================
+END — SKILLAR SYSTEM ARCHITECTURE
+Skills for developers. Tools for agents. Payments on Stellar.
+================================================================
