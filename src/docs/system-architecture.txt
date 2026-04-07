@@ -1,5 +1,5 @@
 ================================================================
-SKILLAR — SYSTEM ARCHITECTURE & USER FLOW DIAGRAMS
+SKILLNET — SYSTEM ARCHITECTURE & USER FLOW DIAGRAMS
 Skills for developers. Tools for agents. Payments on Stellar.
 Plain Text / ASCII Structure
 ================================================================
