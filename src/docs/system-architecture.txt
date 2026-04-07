@@ -56,15 +56,15 @@ How all the layers connect to each other
 │  GET  /api/dashboard/:addr ──► returns seller earnings      │
 │                                                             │
 │  The /api/download/:id endpoint is the most critical:       │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  1. Receives download request                       │   │
-│  │  2. Fires HTTP 402 — Payment Required               │   │
-│  │  3. Returns price + seller Stellar address          │   │
-│  │  4. Waits for Stellar payment confirmation          │   │
-│  │  5. Verifies transaction on Stellar testnet         │   │
-│  │  6. Releases signed Supabase Storage URL            │   │
-│  │  7. File downloads to client (human or agent)       │   │
-│  └─────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  1. Receives download request                       │    │
+│  │  2. Fires HTTP 402 — Payment Required               │    │
+│  │  3. Returns price + seller Stellar address          │    │
+│  │  4. Waits for Stellar payment confirmation          │    │
+│  │  5. Verifies transaction on Stellar testnet         │    │
+│  │  6. Releases signed Supabase Storage URL            │    │
+│  │  7. File downloads to client (human or agent)       │    │
+│  └─────────────────────────────────────────────────────┘    │
 └────────────┬────────────────────────┬───────────────────────┘
              │                        │
      reads/writes data         verifies payments
@@ -127,7 +127,7 @@ HOW THE LAYERS TALK TO EACH OTHER (Connection Summary)
 
 ================================================================
 DIAGRAM 2 — HUMAN BUYER USER FLOW
-How a human developer buys a skill on Skillar
+How a human developer buys a skill on Skillnet
 ================================================================
 
   ┌──────────────────────────────────────────────────────┐
@@ -136,7 +136,7 @@ How a human developer buys a skill on Skillar
                              │
                              ▼
   ┌──────────────────────────────────────────────────────┐
-  │  1. Lands on Skillar home page                       │
+  │  1. Lands on Skillnet home page                      │
   │     Reads hero section, understands the product      │
   │     Clicks "Browse Skills" button                    │
   └──────────────────────────┬───────────────────────────┘
@@ -177,7 +177,7 @@ How a human developer buys a skill on Skillar
   │  4. Server fires HTTP 402                            │
   │     Vercel serverless function receives request      │
   │     Returns: price + seller Stellar address          │
-  │     Example: "Pay 1.50 USDC to G...xyz"             │
+  │     Example: "Pay 1.50 USDC to G...xyz"              │
   └──────────────────────────┬───────────────────────────┘
                              │
                              ▼
@@ -191,7 +191,7 @@ How a human developer buys a skill on Skillar
   │     │  To: G...xyz (seller wallet)       │           │
   │     │  Network: Stellar Testnet          │           │
   │     │                                    │           │
-  │     │  [Approve]          [Reject]        │           │
+  │     │  [Approve]          [Reject]       │           │
   │     └────────────────────────────────────┘           │
   │                                                      │
   │  Human reads the details and clicks Approve          │
@@ -231,7 +231,7 @@ How a human developer buys a skill on Skillar
 
 ================================================================
 DIAGRAM 3 — SELLER USER FLOW
-How a developer lists a skill and earns on Skillar
+How a developer lists a skill and earns on Skillnet
 ================================================================
 
   ┌──────────────────────────────────────────────────────┐
@@ -240,7 +240,7 @@ How a developer lists a skill and earns on Skillar
                              │
                              ▼
   ┌──────────────────────────────────────────────────────┐
-  │  1. Lands on Skillar and connects Freighter wallet   │
+  │  1. Lands on Skillnet and connects Freighter wallet   │
   └──────────────────────────┬───────────────────────────┘
                              │
                              ▼
@@ -254,8 +254,8 @@ How a developer lists a skill and earns on Skillar
   │  3. Fills the listing form                           │
   │                                                      │
   │     Skill name:        [ Web Scraper Pro           ] │
-  │     Category:          [ Backend              ▼   ] │
-  │     Description:       [ Scrapes any website...   ] │
+  │     Category:          [ Backend              ▼    ] │
+  │     Description:       [ Scrapes any website...    ] │
   │     Price (USDC):      [ 2.00                      ] │
   │     Upload skill file: [ Choose .zip file          ] │
   │     Stellar address:   [ G...your_address          ] │
@@ -313,15 +313,15 @@ How an OpenClaw agent buys a skill with zero human involvement
   ┌──────────────────────────────────────────────────────┐
   │  2. Agent realizes it needs a crypto price skill     │
   │     No skill available locally                       │
-  │     Agent queries Skillar API automatically          │
+  │     Agent queries Skillnet API automatically          │
   │                                                      │
-  │     GET https://skillar.vercel.app/api/skills        │
+  │     GET https://Skillnet.vercel.app/api/skills        │
   │         ?category=crypto                             │
   └──────────────────────────┬───────────────────────────┘
                              │
                              ▼
   ┌──────────────────────────────────────────────────────┐
-  │  3. Skillar returns skill catalog as JSON            │
+  │  3. Skillnet returns skill catalog as JSON            │
   │                                                      │
   │     [                                                │
   │       {                                              │
@@ -346,7 +346,7 @@ How an OpenClaw agent buys a skill with zero human involvement
                              │
                              ▼
   ┌──────────────────────────────────────────────────────┐
-  │  5. Skillar server fires HTTP 402                    │
+  │  5. Skillnet server fires HTTP 402                    │
   │     Returns: price 0.001 USDC + seller address       │
   │     No human sees this. It is machine to machine.    │
   └──────────────────────────┬───────────────────────────┘
@@ -362,7 +362,7 @@ How an OpenClaw agent buys a skill with zero human involvement
                              │
                              ▼
   ┌──────────────────────────────────────────────────────┐
-  │  7. Skillar verifies payment on Stellar testnet      │
+  │  7. Skillnet verifies payment on Stellar testnet      │
   │     Returns skill data as JSON directly to agent     │
   │                                                      │
   │     {                                                │
@@ -395,7 +395,7 @@ How an OpenClaw agent buys a skill with zero human involvement
   │     ETH: $3,891 (+1.8% 24h)                          │
   │     SOL: $142 (+5.1% 24h)                            │
   │                                                      │
-  │     Skill acquired from Skillar                      │
+  │     Skill acquired from Skillnet                     │
   │     Paid: 0.001 USDC on Stellar testnet              │
   │     Tx: abc123xyz                                    │
   │     ─────────────────────────────────────            │
@@ -410,12 +410,12 @@ How an OpenClaw agent buys a skill with zero human involvement
 
 ================================================================
 DIAGRAM 5 — THE PAYMENT FLOW
-How money moves through Skillar
+How money moves through Skillnet
 ================================================================
 
   BUYER has USDC in Freighter or Smart Wallet
-         │
-         ▼
+             │
+             ▼
   ┌─────────────────────┐
   │   x402 Protocol     │  ← HTTP 402 Payment Required
   │   Vercel Function   │    triggers on download request
@@ -438,13 +438,13 @@ How money moves through Skillar
   │                           (their Stellar    │
   │                            address)         │
   │                                             │
-  │  $0 ────────────────────► Skillar platform  │
+  │  $0 ────────────────────► Skillnet platform  │
   │                           (no middleman     │
   │                            no platform fee) │
   │                                             │
   └─────────────────────────────────────────────┘
 
-  Note: For hackathon demo, Skillar takes no platform cut.
+  Note: For hackathon demo, Skillnet takes no platform cut.
   In production, a small percentage could be added
   via the x402 middleware configuration.
 
@@ -460,17 +460,17 @@ DIAGRAM 6 — THE TWO ENTRANCES
 Human UI vs Agent API — same platform, different doors
 ================================================================
 
-  SKILLAR PLATFORM
+  SKILLNET PLATFORM
   ─────────────────────────────────────────────────────────
 
   ENTRANCE 1 — Human Door (Frontend)
   ─────────────────────────────────────────────────────────
 
-  skillar.vercel.app/              Home page
-  skillar.vercel.app/catalog       Browse skills
-  skillar.vercel.app/skills/:id    Skill detail + download
-  skillar.vercel.app/list-skill    Seller listing form
-  skillar.vercel.app/dashboard     Seller earnings page
+  Skillnet.vercel.app/              Home page
+  skillnet.vercel.app/catalog       Browse skills
+  skillnet.vercel.app/skills/:id    Skill detail + download
+  skillnet.vercel.app/list-skill    Seller listing form
+  skillnet.vercel.app/dashboard     Seller earnings page
 
   Who uses this: Human developers and sellers
   Interface: React pages, buttons, Freighter popup
@@ -481,12 +481,12 @@ Human UI vs Agent API — same platform, different doors
   ENTRANCE 2 — Agent Door (Backend API)
   ─────────────────────────────────────────────────────────
 
-  skillar.vercel.app/api/skills           All skills JSON
-  skillar.vercel.app/api/skills/:id       One skill JSON
-  skillar.vercel.app/api/categories       Categories JSON
-  skillar.vercel.app/api/download/:id     x402 payment gate
-  skillar.vercel.app/api/list-skill       POST new listing
-  skillar.vercel.app/api/dashboard/:addr  Seller stats JSON
+  skillnet.vercel.app/api/skills           All skills JSON
+  skillnet.vercel.app/api/skills/:id       One skill JSON
+  skillnet.vercel.app/api/categories       Categories JSON
+  skillnet.vercel.app/api/download/:id     x402 payment gate
+  skillnet.vercel.app/api/list-skill       POST new listing
+  skillnet.vercel.app/api/dashboard/:addr  Seller stats JSON
 
   Who uses this: AI agents (OpenClaw, custom scripts)
   Interface: Pure JSON API, no visual UI
@@ -544,7 +544,7 @@ What a buyer receives after payment
 
   {
     "skill_id": "crypto-price-watcher",
-    "endpoint": "https://skillar.vercel.app/...",
+    "endpoint": "https://skillnet.vercel.app/...",
     "method": "GET",
     "auth": "x402",
     "parameters": {
@@ -565,11 +565,11 @@ What a buyer receives after payment
 
 ================================================================
 DIAGRAM 8 — SKILL CATEGORIES
-The 8 categories available on Skillar
+The 8 categories available on Skillnet
 ================================================================
 
   ┌─────────────────────────────────────────────────────┐
-  │                SKILLAR CATEGORIES                   │
+  │                SKILLNET CATEGORIES                   │
   │                                                     │
   │  ┌───────────┐  ┌───────────┐  ┌────────────────┐  │
   │  │ Blockchain│  │  Crypto   │  │      AI        │  │
@@ -611,7 +611,7 @@ All 5 pages and what lives on each one
   ┌─────────────────────────────────────────────────────────┐
   │  /                    Home / Landing Page               │
   │                                                         │
-  │  - Hero section with Skillar name and tagline           │
+  │  - Hero section with Skillnet name and tagline           │
   │  - "Browse Skills" and "List Your Skill" CTA buttons    │
   │  - How it works — 4 step explanation                    │
   │  - Categories section — 8 clickable category cards      │
@@ -652,7 +652,7 @@ All 5 pages and what lives on each one
   ┌─────────────────────────────────────────────────────────┐
   │  /list-skill          Seller Listing Form Page          │
   │                                                         │
-  │  - Page heading: "List Your Skill on Skillar"           │
+  │  - Page heading: "List Your Skill on Skillnet"          │
   │  - Form fields:                                         │
   │      - Skill name (text input)                          │
   │      - Category (dropdown — all 8 categories)           │
@@ -739,7 +739,7 @@ Every tool used in Skillar and what it does
 
 ================================================================
 DIAGRAM 11 — BUILD ORDER
-The exact sequence to build Skillar phase by phase
+The exact sequence to build Skillnet phase by phase
 ================================================================
 
   PHASE 1 — Project Setup
@@ -873,7 +873,7 @@ The exact sequence to build Skillar phase by phase
   ┌─────────────────────────────────────────────────────┐
   │  Install OpenClaw globally                          │
   │  Connect to Telegram                                │
-  │  Write agent script that calls Skillar API          │
+  │  Write agent script that calls Skillnet API         │
   │  Test autonomous payment flow in terminal           │
   └─────────────────────┬───────────────────────────────┘
                         │
@@ -917,8 +917,8 @@ How to record the winning 2-3 minute video
 ================================================================
 
   0:00 to 0:20 — Introduction
-    Open Skillar home page in browser
-    Say: "Skillar is the skill marketplace for developers
+    Open Skillnet home page in browser
+    Say: "Skillnet is the skill marketplace for developers
           and AI agents, with instant payments on Stellar
           via x402."
 
@@ -939,7 +939,7 @@ How to record the winning 2-3 minute video
     Switch to terminal
     Run OpenClaw agent script
     Show terminal printing:
-      - Querying Skillar API...
+      - Querying Skillnet API...
       - Found skill: Crypto Price Watcher
       - Initiating payment on Stellar...
       - Payment confirmed — Tx: abc123
@@ -959,7 +959,7 @@ How to record the winning 2-3 minute video
 
   2:20 to 2:30 — Close
     Back to home page
-    Say: "Skillar — Skills for developers.
+    Say: "Skillnet — Skills for developers.
           Tools for agents. Payments on Stellar."
 
 
@@ -999,6 +999,6 @@ SUBMISSION CHECKLIST
 
 
 ================================================================
-END — SKILLAR SYSTEM ARCHITECTURE
+END — SKILLNET SYSTEM ARCHITECTURE
 Skills for developers. Tools for agents. Payments on Stellar.
 ================================================================
