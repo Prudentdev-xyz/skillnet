@@ -611,7 +611,7 @@ All 5 pages and what lives on each one
   ┌─────────────────────────────────────────────────────────┐
   │  /                    Home / Landing Page               │
   │                                                         │
-  │  - Hero section with Skillnet name and tagline           │
+  │  - Hero section with Skillnet name and tagline          │
   │  - "Browse Skills" and "List Your Skill" CTA buttons    │
   │  - How it works — 4 step explanation                    │
   │  - Categories section — 8 clickable category cards      │
