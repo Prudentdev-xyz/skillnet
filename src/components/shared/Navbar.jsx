@@ -29,7 +29,7 @@ export default function Navbar() {
             <img
               src={logo}
               alt="SkillNet"
-              className="h-8 w-auto object-contain"
+              className="h-10 w-auto object-contain"
             />
           </Link>
 
