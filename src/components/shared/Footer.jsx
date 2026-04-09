@@ -35,9 +35,6 @@ export default function Footer() {
 
           {/* Nav Links */}
           <div className="flex flex-col gap-3">
-            <p style={{ color: "#F8FAFC" }} className="text-sm font-semibold">
-              Navigation
-            </p>
             {navLinks.map((link) => (
               <Link
                 key={link.path}

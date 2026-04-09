@@ -41,7 +41,7 @@ export default function Navbar() {
                 to={link.path}
                 style={{
                   color: isActive(link.path) ? "#00E5FF" : "#94A3B8",
-                  fontWeight: isActive(link.path) ? "600" : "400",
+                  fontWeight: isActive(link.path) ? "500" : "400",
                 }}
                 className="text-sm transition-colors hover:text-white"
               >
