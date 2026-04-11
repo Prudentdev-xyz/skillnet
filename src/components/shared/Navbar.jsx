@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "@/assets/SkillnetLogo.jpg";
+import { useWallet } from "../../context/WalletContext";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const { walletAddress, connecting, connectWallet, disconnectWallet } = useWallet();
 
   const navLinks = [
     { label: "Home", path: "/" },
@@ -13,17 +15,25 @@ export default function Navbar() {
     { label: "Dashboard", path: "/dashboard" },
   ];
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => {
+    if (path === "/") return location.pathname === "/";
+    return location.pathname === path;
+  };
+
+  const shortAddress = (addr) =>
+    addr ? `${addr.slice(0, 4)}...${addr.slice(-4)}` : "";
 
   return (
     <nav
       style={{
+        backgroundColor: "#0B0B0C",
         borderBottom: "1px solid #ffffff14",
       }}
       className="w-full sticky top-0 z-50"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
+
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img
@@ -52,16 +62,45 @@ export default function Navbar() {
 
           {/* Connect Wallet Button — Desktop */}
           <div className="hidden md:flex items-center">
-            <button
-              style={{
-                backgroundColor: "#311B92",
-                color: "#F8FAFC",
-                border: "none",
-              }}
-              className="px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
-            >
-              Connect Wallet
-            </button>
+            {walletAddress ? (
+              <div className="flex items-center gap-3">
+                <div
+                  style={{
+                    backgroundColor: "#161618",
+                    border: "1px solid #ffffff14",
+                    color: "#00E5FF",
+                  }}
+                  className="px-3 py-2 rounded-lg text-xs font-medium"
+                >
+                  ● {shortAddress(walletAddress)}
+                </div>
+                <button
+                  onClick={disconnectWallet}
+                  style={{
+                    backgroundColor: "transparent",
+                    color: "#94A3B8",
+                    border: "1px solid #ffffff14",
+                  }}
+                  className="px-3 py-2 rounded-lg text-xs font-medium hover:text-white hover:border-white transition-all"
+                >
+                  Disconnect
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={connectWallet}
+                disabled={connecting}
+                style={{
+                  backgroundColor: "#311B92",
+                  color: "#F8FAFC",
+                  border: "none",
+                  opacity: connecting ? 0.7 : 1,
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
+              >
+                {connecting ? "Connecting..." : "Connect Wallet"}
+              </button>
+            )}
           </div>
 
           {/* Mobile Hamburger */}
@@ -96,6 +135,7 @@ export default function Navbar() {
       {menuOpen && (
         <div
           style={{
+            backgroundColor: "#0B0B0C",
             borderTop: "1px solid #ffffff14",
           }}
           className="md:hidden px-4 pb-4 pt-2 flex flex-col gap-4"
@@ -116,16 +156,51 @@ export default function Navbar() {
           ))}
 
           {/* Connect Wallet — Mobile */}
-          <button
-            style={{
-              backgroundColor: "#311B92",
-              color: "#F8FAFC",
-              border: "none",
-            }}
-            className="w-full px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 text-center"
-          >
-            Connect Wallet
-          </button>
+          {walletAddress ? (
+            <div className="flex flex-col gap-2">
+              <div
+                style={{
+                  backgroundColor: "#161618",
+                  border: "1px solid #ffffff14",
+                  color: "#00E5FF",
+                }}
+                className="px-3 py-2 rounded-lg text-xs font-medium text-center"
+              >
+                ● {shortAddress(walletAddress)}
+              </div>
+              <button
+                onClick={() => {
+                  disconnectWallet();
+                  setMenuOpen(false);
+                }}
+                style={{
+                  backgroundColor: "transparent",
+                  color: "#94A3B8",
+                  border: "1px solid #ffffff14",
+                }}
+                className="w-full px-4 py-2 rounded-lg text-sm font-medium hover:text-white transition-all text-center"
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                connectWallet();
+                setMenuOpen(false);
+              }}
+              disabled={connecting}
+              style={{
+                backgroundColor: "#311B92",
+                color: "#F8FAFC",
+                border: "none",
+                opacity: connecting ? 0.7 : 1,
+              }}
+              className="w-full px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 text-center"
+            >
+              {connecting ? "Connecting..." : "Connect Wallet"}
+            </button>
+          )}
         </div>
       )}
     </nav>
