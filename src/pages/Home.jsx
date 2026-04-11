@@ -98,19 +98,6 @@ export default function Home() {
     <div style={{ backgroundColor: "#0B0B0C" }} className="w-full">
       {/* ───── HERO ───── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 flex flex-col items-center text-center gap-8">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          style={{
-            backgroundColor: "#161618",
-            border: "1px solid #ffffff1a",
-            color: "#94A3B8",
-          }}
-          className="px-4 py-1.5 rounded-full text-xs font-medium tracking-widest uppercase"
-        >
-          Built on Stellar · Powered by x402
-        </motion.div>
 
         <motion.h1
           variants={fadeUp}
