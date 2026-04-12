@@ -1,13 +1,7 @@
 import { useState } from "react";
 import { signTransaction, getAddress } from "@stellar/freighter-api";
-import {
-  Asset,
-  Horizon,
-  Memo,
-  Networks,
-  Operation,
-  TransactionBuilder,
-} from "@stellar/stellar-sdk";
+import pkg from "@stellar/stellar-sdk";
+const { Asset, Horizon, Memo, Networks, Operation, TransactionBuilder } = pkg;
 
 const USDC = new Asset(
   "USDC",
@@ -39,14 +33,28 @@ export function usePayment() {
 
       // Step 2 — Call the x402 endpoint to get payment details
       const response = await fetch(`/api/download?id=${skill.id}`);
-      const data = await response.json();
+      console.log("response status:", response.status);
+console.log("response ok:", response.ok);
 
-      if (response.status !== 402) {
-        setPaymentError("Unexpected response from server.");
-        setPaying(false);
-        return null;
-      }
+let data;
+try {
+  data = await response.json();
+} 
 
+ catch (err) {
+  console.error("Payment error full:", err);
+  console.error("Payment error message:", err.message);
+  console.error("Payment error stack:", err.stack);
+  setPaymentError(err.message || "Payment failed. Please try again.");
+  setPaying(false);
+  return null;
+}
+
+if (response.status !== 402) {
+  setPaymentError("Unexpected response from server.");
+  setPaying(false);
+  return null;
+}
       const { x402 } = data;
 
       // Step 3 — Load buyer account from Stellar
