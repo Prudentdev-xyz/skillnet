@@ -1,12 +1,7 @@
 /* eslint-disable no-undef */
 import { createClient } from "@supabase/supabase-js";
-import {
-  Asset,
-  Keypair,
-  Networks,
-  Server,
-  TransactionBuilder,
-} from "@stellar/stellar-sdk";
+import pkg from "@stellar/stellar-sdk";
+const { Asset, Keypair, Networks, Horizon, TransactionBuilder } = pkg;
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -14,7 +9,7 @@ const supabase = createClient(
 );
 
 // Stellar testnet server
-const server = new Server("https://horizon-testnet.stellar.org");
+const server = new Horizon.Server("https://horizon-testnet.stellar.org");
 
 // USDC on Stellar testnet
 const USDC = new Asset(
