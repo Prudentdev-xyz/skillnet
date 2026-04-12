@@ -1,14 +1,5 @@
 import { useState } from "react";
 import { signTransaction, getAddress } from "@stellar/freighter-api";
-import pkg from "@stellar/stellar-sdk";
-const { Asset, Horizon, Memo, Networks, Operation, TransactionBuilder } = pkg;
-
-const USDC = new Asset(
-  "USDC",
-  "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
-);
-
-const server = new Horizon.Server("https://horizon-testnet.stellar.org");
 
 export function usePayment() {
   const [paying, setPaying] = useState(false);
@@ -30,90 +21,120 @@ export function usePayment() {
       }
 
       const buyerAddress = addressResult.address;
+      console.log("Buyer address:", buyerAddress);
 
-      // Step 2 — Call the x402 endpoint to get payment details
+      // Step 2 — Call x402 endpoint to get payment details
       const response = await fetch(`/api/download?id=${skill.id}`);
-      console.log("response status:", response.status);
-console.log("response ok:", response.ok);
+      console.log("402 response status:", response.status);
 
-let data;
-try {
-  data = await response.json();
-} 
-
- catch (err) {
-  console.error("Payment error full:", err);
-  console.error("Payment error message:", err.message);
-  console.error("Payment error stack:", err.stack);
-  setPaymentError(err.message || "Payment failed. Please try again.");
-  setPaying(false);
-  return null;
-}
-
-if (response.status !== 402) {
-  setPaymentError("Unexpected response from server.");
-  setPaying(false);
-  return null;
-}
-      const { x402 } = data;
-
-      // Step 3 — Load buyer account from Stellar
-      const account = await server.loadAccount(buyerAddress);
-
-      // Step 4 — Build the payment transaction
-      const transaction = new TransactionBuilder(account, {
-        fee: "100",
-        networkPassphrase: Networks.TESTNET,
-      })
-        .addOperation(
-          Operation.payment({
-            destination: x402.destination,
-            asset: USDC,
-            amount: x402.price.toFixed(7),
-          })
-        )
-        .addMemo(Memo.text(x402.memo))
-        .setTimeout(30)
-        .build();
-
-      // Step 5 — Sign transaction with Freighter
-      const signResult = await signTransaction(transaction.toXDR(), {
-        networkPassphrase: Networks.TESTNET,
-      });
-
-      if (signResult.error) {
-        setPaymentError("Transaction signing failed or was rejected.");
+      let data;
+      try {
+        data = await response.json();
+        console.log("402 data:", data);
+      } catch {
+        setPaymentError("Server returned invalid response.");
         setPaying(false);
         return null;
       }
 
-      // Step 6 — Submit transaction to Stellar testnet
-      const { TransactionBuilder: TB } = await import("@stellar/stellar-sdk");
-      const signedTx = TB.fromXDR(
-        signResult.signedTxXdr,
-        Networks.TESTNET
+      if (response.status !== 402 || !data.x402) {
+        setPaymentError("Unexpected response from payment server.");
+        setPaying(false);
+        return null;
+      }
+
+      const { x402 } = data;
+
+      // Step 3 — Build transaction using Horizon REST API directly
+      // Load account sequence number
+      const accountRes = await fetch(
+        `https://horizon-testnet.stellar.org/accounts/${buyerAddress}`
       );
+      const accountData = await accountRes.json();
 
-      const submitted = await server.submitTransaction(signedTx);
-      const txHash = submitted.hash;
+      if (!accountData.sequence) {
+        setPaymentError("Could not load your Stellar account. Make sure your wallet is funded on testnet.");
+        setPaying(false);
+        return null;
+      }
 
-      // Step 7 — Send tx hash to server for verification
-      const verifyResponse = await fetch(`/api/download?id=${skill.id}`, {
-        method: "GET",
+      console.log("Account loaded, sequence:", accountData.sequence);
+
+      // Step 4 — Build transaction XDR using Freighter's built-in method
+      // We use the stellar-sdk only on the server side
+      // On frontend we use Freighter to sign a pre-built transaction
+
+      // Build transaction via our own API endpoint
+      const buildRes = await fetch(`/api/build-transaction`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          buyerAddress,
+          destination: x402.destination,
+          amount: x402.price,
+          memo: x402.memo,
+        }),
+      });
+
+      const buildData = await buildRes.json();
+      console.log("Build transaction response:", buildData);
+
+      if (!buildData.success) {
+        setPaymentError("Failed to build transaction.");
+        setPaying(false);
+        return null;
+      }
+
+      // Step 5 — Sign with Freighter
+      const signResult = await signTransaction(buildData.xdr, {
+        networkPassphrase: "Test SDF Network ; September 2015",
+      });
+
+      console.log("Sign result:", signResult);
+
+      if (signResult.error) {
+        setPaymentError("Transaction was rejected or signing failed.");
+        setPaying(false);
+        return null;
+      }
+
+      // Step 6 — Submit signed transaction via our API
+      const submitRes = await fetch(`/api/submit-transaction`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signedXdr: signResult.signedTxXdr,
+        }),
+      });
+
+      const submitData = await submitRes.json();
+      console.log("Submit result:", submitData);
+
+      if (!submitData.success) {
+        setPaymentError("Transaction submission failed.");
+        setPaying(false);
+        return null;
+      }
+
+      const txHash = submitData.hash;
+      console.log("Transaction hash:", txHash);
+
+      // Step 7 — Verify payment and get download URL
+      const verifyRes = await fetch(`/api/download?id=${skill.id}`, {
         headers: {
           "x-payment-txhash": txHash,
         },
       });
 
-      const verifyData = await verifyResponse.json();
+      const verifyData = await verifyRes.json();
+      console.log("Verify data:", verifyData);
 
       if (!verifyData.success) {
-        setPaymentError("Payment verification failed. Please contact support.");
+        setPaymentError("Payment verification failed.");
         setPaying(false);
         return null;
       }
 
-      // Step 8 — Payment confirmed — trigger download
       setPaymentSuccess(true);
       setPaying(false);
       return verifyData.downloadUrl;
