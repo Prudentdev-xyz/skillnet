@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
+import BuyButton from "../components/shared/BuyButton";
 import { supabase } from "../lib/supabase";
 
 export default function SkillDetail() {
@@ -79,7 +80,6 @@ export default function SkillDetail() {
   return (
     <div style={{ backgroundColor: "#0B0B0C" }} className="w-full min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-
         {/* ── BACK BUTTON ── */}
         <motion.div
           initial={{ opacity: 0, x: -10 }}
@@ -109,7 +109,6 @@ export default function SkillDetail() {
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
           {/* ── LEFT COLUMN — Main info ── */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -303,10 +302,7 @@ export default function SkillDetail() {
                 <p style={{ color: "#94A3B8" }} className="text-xs">
                   Price
                 </p>
-                <p
-                  style={{ color: "#00E5FF" }}
-                  className="text-3xl font-bold"
-                >
+                <p style={{ color: "#00E5FF" }} className="text-3xl font-bold">
                   ${skill.price_usdc}
                   <span
                     style={{ color: "#94A3B8" }}
@@ -378,17 +374,7 @@ export default function SkillDetail() {
               />
 
               {/* Download Button */}
-              <button
-                style={{
-                  backgroundColor: "#311B92",
-                  color: "#F8FAFC",
-                  border: "none",
-                }}
-                className="w-full py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
-                onClick={() => alert("Payment coming in Phase 9 guy!")}
-              >
-                Download Skill — ${skill.price_usdc} USDC
-              </button>
+              <BuyButton skill={skill} className="w-full px-6" />
 
               {/* Info note */}
               <p

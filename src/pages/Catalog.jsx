@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
+import BuyButton from "../components/shared/BuyButton";
 import { supabase } from "../lib/supabase";
 
 export default function Catalog() {
@@ -47,7 +48,7 @@ export default function Catalog() {
     if (categoryFromUrl) {
       setActiveCategory(categoryFromUrl);
     }
-  }, [searchParams]); 
+  }, [searchParams]);
 
   const filtered = useMemo(() => {
     let result = skills;
@@ -335,6 +336,7 @@ export default function Catalog() {
                   </span>
 
                   {/* Two Buttons */}
+                  {/* Two Buttons */}
                   <div className="flex items-center gap-2">
                     <Link
                       to={`/skills/${skill.id}`}
@@ -347,16 +349,7 @@ export default function Catalog() {
                     >
                       View Details
                     </Link>
-                    <button
-                      style={{
-                        backgroundColor: "#311B92",
-                        color: "#F8FAFC",
-                        border: "none",
-                      }}
-                      className="flex-1 text-xs font-semibold py-2 rounded-lg hover:opacity-90 transition-opacity"
-                    >
-                      Buy Now
-                    </button>
+                    <BuyButton skill={skill} className="flex-1" />
                   </div>
                 </motion.div>
               ))}
