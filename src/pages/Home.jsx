@@ -48,14 +48,14 @@ export default function Home() {
   }, []);
 
   const categories = [
-    { label: "Blockchain", icon: "⛓️" },
-    { label: "Crypto", icon: "₿" },
-    { label: "AI", icon: "🤖" },
-    { label: "Web3", icon: "🌐" },
-    { label: "Frontend", icon: "🖥️" },
-    { label: "Backend", icon: "⚙️" },
-    { label: "Product Design", icon: "🎨" },
-    { label: "DeFi", icon: "✦" },
+    { label: "Blockchain" },
+    { label: "Crypto" },
+    { label: "AI",},
+    { label: "Web3"},
+    { label: "Frontend", },
+    { label: "Backend" },
+    { label: "Product Design" },
+    { label: "DeFi" },
   ];
 
   const steps = [
