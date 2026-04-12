@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+// eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import { useWallet } from "../context/WalletContext";
 import { supabase } from "../lib/supabase";
@@ -142,19 +143,16 @@ export default function Dashboard() {
               label: "Total Earnings",
               value: `$${stats.totalEarnings} USDC`,
               color: "#00E5FF",
-              icon: "💰",
             },
             {
               label: "Total Downloads",
               value: stats.totalDownloads,
               color: "#F8FAFC",
-              icon: "⬇️",
             },
             {
               label: "Skills Listed",
               value: stats.totalSkills,
               color: "#F8FAFC",
-              icon: "📦",
             },
           ].map((stat, i) => (
             <motion.div
