@@ -13,6 +13,7 @@ import fetch from "node-fetch";
 config();
 
 // ─── CONFIG ───────────────────────────────────────────
+/* eslint-disable no-undef */
 const SKILLNET_API = process.env.SKILLNET_API_URL || "http://localhost:3000";
 const AGENT_SECRET = process.env.AGENT_STELLAR_SECRET;
 const USDC_ISSUER = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
