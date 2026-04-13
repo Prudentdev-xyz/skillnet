@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+// eslint-disable-next-line no-unused-vars
+import { motion } from "framer-motion";
 import logo from "@/assets/SkillnetLogo.jpg";
 import { useWallet } from "../../context/WalletContext";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-  const { walletAddress, connecting, connectWallet, disconnectWallet } = useWallet();
+  const { walletAddress, connecting, connectWallet, disconnectWallet } =
+    useWallet();
 
   const navLinks = [
     { label: "Home", path: "/" },
@@ -24,7 +27,10 @@ export default function Navbar() {
     addr ? `${addr.slice(0, 4)}...${addr.slice(-4)}` : "";
 
   return (
-    <nav
+    <motion.nav
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
       style={{
         backgroundColor: "#0B0B0C",
         borderBottom: "1px solid #ffffff14",
@@ -33,7 +39,6 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img
@@ -203,6 +208,6 @@ export default function Navbar() {
           )}
         </div>
       )}
-    </nav>
+    </motion.nav>
   );
 }

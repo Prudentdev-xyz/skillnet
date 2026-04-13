@@ -47,7 +47,7 @@ export default function BuyButton({ skill, className }) {
           color: "#00E5FF",
           border: "1px solid #00E5FF",
         }}
-        className={`text-xs font-semibold py-2 rounded-lg transition-all ${className}`}
+        className={`text-xs font-semibold py-2 px-2 rounded-lg transition-all ${className}`}
       >
         Download Complete
       </motion.button>
