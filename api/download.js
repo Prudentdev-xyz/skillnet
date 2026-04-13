@@ -1,23 +1,12 @@
 /* eslint-disable no-undef */
 import { createClient } from "@supabase/supabase-js";
 import pkg from "@stellar/stellar-sdk";
-const { Asset, Keypair, Networks, Horizon, TransactionBuilder } = pkg;
+const { Asset, Networks, Horizon } = pkg;
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
-
-// Stellar testnet server
-const server = new Horizon.Server("https://horizon-testnet.stellar.org");
-
-// USDC on Stellar testnet
-const USDC = new Asset(
-  "USDC",
-  "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
-);
-
-const NETWORK_PASSPHRASE = Networks.TESTNET;
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -117,12 +106,9 @@ export default async function handler(req, res) {
 // Payment verification function
 async function verifyPayment(txHash, destinationAddress, expectedAmount) {
   try {
-    // Fetch transaction from Stellar testnet
-    const transaction = await server.transactions().transaction(txHash).call();
+    const server = new Horizon.Server("https://horizon-testnet.stellar.org");
+    const USDC_CODE = "USDC";
 
-    if (!transaction) return false;
-
-    // Fetch the operations in the transaction
     const operations = await server
       .operations()
       .forTransaction(txHash)
@@ -130,12 +116,11 @@ async function verifyPayment(txHash, destinationAddress, expectedAmount) {
 
     if (!operations.records || operations.records.length === 0) return false;
 
-    // Check each operation for a valid payment
     for (const op of operations.records) {
       if (
         op.type === "payment" &&
         op.to === destinationAddress &&
-        op.asset_code === "USDC" &&
+        op.asset_code === USDC_CODE &&
         parseFloat(op.amount) >= parseFloat(expectedAmount)
       ) {
         return true;
