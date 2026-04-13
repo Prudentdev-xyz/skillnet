@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { usePayment } from "../../hooks/usePayment";
 import { useWallet } from "../../context/WalletContext";
+// eslint-disable-next-line no-unused-vars
+import { motion } from "framer-motion";
 
 export default function BuyButton({ skill, className }) {
   const { walletAddress } = useWallet();
-  const { paying, paymentError, paymentSuccess, initiatePayment } = usePayment();
+  const { paying, paymentError, paymentSuccess, initiatePayment } =
+    usePayment();
   const [showError, setShowError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -35,7 +38,10 @@ export default function BuyButton({ skill, className }) {
 
   if (showSuccess) {
     return (
-      <button
+      <motion.button
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
         style={{
           backgroundColor: "#0B0B0C",
           color: "#00E5FF",
@@ -43,8 +49,8 @@ export default function BuyButton({ skill, className }) {
         }}
         className={`text-xs font-semibold py-2 rounded-lg transition-all ${className}`}
       >
-        ✓ Downloaded!
-      </button>
+        Download Complete
+      </motion.button>
     );
   }
 
@@ -72,18 +78,20 @@ export default function BuyButton({ skill, className }) {
   }
 
   return (
-    <button
+    <motion.button
       onClick={handleBuy}
       disabled={paying}
+      whileHover={{ scale: paying ? 1 : 1.02 }}
+      whileTap={{ scale: paying ? 1 : 0.97 }}
       style={{
         backgroundColor: paying ? "#161618" : "#311B92",
         color: paying ? "#94A3B8" : "#F8FAFC",
         border: paying ? "1px solid #ffffff14" : "none",
         opacity: paying ? 0.8 : 1,
       }}
-      className={`text-xs font-semibold py-2 rounded-lg hover:opacity-90 transition-all ${className}`}
+      className={`text-xs font-semibold py-2 rounded-lg transition-colors ${className}`}
     >
       {paying ? "Processing..." : "Buy Now"}
-    </button>
+    </motion.button>
   );
 }
