@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 import { createClient } from "@supabase/supabase-js";
 import pkg from "@stellar/stellar-sdk";
-const { Asset, Networks, Horizon } = pkg;
+const { Horizon } = pkg;
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,7 +11,7 @@ const supabase = createClient(
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Payment-Response");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Payment-Response, X-Payment-Txhash");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -41,11 +41,11 @@ export default async function handler(req, res) {
       });
     }
 
-    // Step 2 — Check if payment proof is attached to request
-    const paymentTxHash = req.headers["x-payment-txhash"];
+    // Step 2 — Check if payment proof is attached
+    const paymentTxHash =
+      req.headers["x-payment-txhash"] || req.headers["x-payment-response"];
 
     if (!paymentTxHash) {
-      // No payment yet — fire HTTP 402
       return res.status(402).json({
         success: false,
         error: "Payment required",
@@ -61,7 +61,10 @@ export default async function handler(req, res) {
       });
     }
 
-    // Step 3 — Verify payment on Stellar testnet
+    // Step 3 — Wait for Stellar to index the transaction
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    // Step 4 — Verify payment
     const isValid = await verifyPayment(
       paymentTxHash,
       skill.seller_address,
@@ -75,13 +78,13 @@ export default async function handler(req, res) {
       });
     }
 
-    // Step 4 — Payment confirmed — update download count
+    // Step 5 — Update download count
     await supabase
       .from("skills")
       .update({ downloads: skill.downloads + 1 })
       .eq("id", skill.id);
 
-    // Step 5 — Return download URL
+    // Step 6 — Return download URL
     return res.status(200).json({
       success: true,
       message: "Payment confirmed. Download ready.",
@@ -95,32 +98,35 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error("Download endpoint error:", err);
+    console.error("Download endpoint error:", err.message, err.stack);
     return res.status(500).json({
       success: false,
-      error: "Internal server error",
+      error: err.message || "Internal server error",
     });
   }
 }
 
-// Payment verification function
+// Payment verification
 async function verifyPayment(txHash, destinationAddress, expectedAmount) {
   try {
     const server = new Horizon.Server("https://horizon-testnet.stellar.org");
-    const USDC_CODE = "USDC";
 
     const operations = await server
       .operations()
       .forTransaction(txHash)
       .call();
 
-    if (!operations.records || operations.records.length === 0) return false;
+    if (!operations.records || operations.records.length === 0) {
+      console.error("No operations found for tx:", txHash);
+      return false;
+    }
 
     for (const op of operations.records) {
+      console.log("Operation:", op.type, op.to, op.asset_code, op.amount);
       if (
         op.type === "payment" &&
         op.to === destinationAddress &&
-        op.asset_code === USDC_CODE &&
+        op.asset_code === "USDC" &&
         parseFloat(op.amount) >= parseFloat(expectedAmount)
       ) {
         return true;
@@ -129,7 +135,7 @@ async function verifyPayment(txHash, destinationAddress, expectedAmount) {
 
     return false;
   } catch (err) {
-    console.error("Payment verification error:", err);
+    console.error("Payment verification error:", err.message);
     return false;
   }
 }
