@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import BuyButton from "../components/shared/BuyButton";
 import { supabase } from "../lib/supabase";
+import PageWrapper from "../components/shared/PageWrapper";
 
 export default function Catalog() {
   const [skills, setSkills] = useState([]);
@@ -80,6 +81,7 @@ export default function Catalog() {
   };
 
   return (
+    <PageWrapper>
     <div style={{ backgroundColor: "#0B0B0C" }} className="w-full min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* ───── PAGE HEADER ───── */}
@@ -358,5 +360,6 @@ export default function Catalog() {
         )}
       </div>
     </div>
+    </PageWrapper>
   );
 }
