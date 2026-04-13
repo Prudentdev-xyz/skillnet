@@ -7,6 +7,7 @@ import Catalog from "./pages/Catalog";
 import SkillDetail from "./pages/SkillDetail";
 import ListSkill from "./pages/ListSkill";
 import Dashboard from "./pages/Dashboard";
+import ScrollToTop from "./components/shared/ScrollToTop";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -27,6 +28,7 @@ function AnimatedRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <div className="flex flex-col min-h-screen">
         <Navbar />
         <main className="flex-1">
